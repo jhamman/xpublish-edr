@@ -1,6 +1,7 @@
 """
 OGC EDR router for datasets with CF convention metadata
 """
+import asyncio
 import logging
 from functools import cache
 from typing import Hashable, List, Optional, Tuple
@@ -65,7 +66,7 @@ class CfEdrPlugin(Plugin):
             "/position/formats",
             summary="Position query response formats",
         )
-        def get_position_formats():
+        async def get_position_formats():
             """
             Returns the various supported formats for position queries
             """
@@ -81,7 +82,7 @@ class CfEdrPlugin(Plugin):
         router = APIRouter(prefix=self.app_router_prefix, tags=self.dataset_router_tags)
 
         @router.get("/position", summary="Position query")
-        def get_position(
+        async def get_position(
             request: Request,
             query: EDRQuery = Depends(edr_query),
             dataset: xr.Dataset = Depends(deps.dataset),
@@ -180,7 +181,9 @@ class CfEdrPlugin(Plugin):
                 else:
                     format_fn = to_cf_covjson
 
-            response = format_fn(ds)
+            response = await asyncio.to_thread(format_fn, ds)
+            assert isinstance(response, Response)  # TODO: make mypy happy another way
+
             cache.put(
                 cache_key,
                 response,
